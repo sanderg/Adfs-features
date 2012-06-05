@@ -1,8 +1,0 @@
-<?php
-/**
- * @file
- * Code for the adfs_news_feature feature.
- */
-
-include_once 'adfs_news_feature.features.inc';
-drupal_add_css(drupal_get_path('module', 'adfs_news_feature') . '/adfs_news_feature.css', array('group' => CSS_THEME, 'type' => 'file'));
