@@ -1,0 +1,105 @@
+<?php
+
+  /**
+   * Test CRUD of newsitem by anonymous
+   */
+  class AdfsTestingNewsWebmasterTestCase extends EupcRemoteTestCase
+  {
+
+    public static function getInfo()
+    {
+      return array(
+        'name' => 'Tests for webmaster user',
+        'description' => 'Tests for webmaster news functionality',
+        'group' => 'News'
+      );
+    }
+
+    public function testCreateNews()
+    {
+      $this->EupcUserLogin('webmaster');
+
+      $struct = $this->EupcTestGetStructure('news-item');
+      $node = $this->EupcTestSaveStructure('news-item', $struct);
+
+      $files = array();
+      // Add photo to news item
+      foreach (array('image_1.jpg') as $filename) {
+        //Delete old files
+        $files_o = file_load_multiple(false, array('filename' => $filename));
+        foreach ($files_o as $key => $file) {
+          file_delete(file_load($key));
+        }
+        //New files
+        $file = new stdClass();
+        $uri = file_unmanaged_copy(drupal_get_path('module', 'adfs_news_feature') . '/Testcase/files/' . $filename, 'public://' . $filename, FILE_EXISTS_REPLACE);
+        $this->verbose('URI: ' . $uri);
+        $file = array(
+          'uid' => 1,
+          'filename' => $filename,
+          'filemime' => 'image/jpeg',
+          'uri' => $uri,
+          'status' => FILE_STATUS_PERMANENT,
+        );
+        $file = (object)$file;
+        $file->display = 1;
+        $file->description = '';
+        $file = file_save($file);
+        $files[]['fid'] = $file->fid;
+      }
+      $node->field_news_tumbnail[LANGUAGE_NONE] = $files;
+
+      node_save($node);
+
+      // Assert content
+      $this->drupalGet('node/' . $node->nid);
+      $this->assertRaw('Intro created news', 'Body filled');
+      $this->assertRaw($node->title, 'Title in place');
+      $this->assertRaw('General', 'Taxonomy news category in place');
+
+      $file00 = file_load($node->field_news_tumbnail[LANGUAGE_NONE][0]['fid']);
+      // Assert thumbnail on node news detail
+      $this->assertImageBySrc(image_style_url('news_tumbnail', $file00->uri));
+
+      $this->drupalGet('/');
+      $this->assertResponse(200, "Webmaster user allowed to see homepage");
+      $this->assertRaw('Latest news', 'Block found on homepage');
+      $this->assertRaw($node->title, 'Titel from node: ' . $node->title . ' found on homepage');
+      $items_to_display = variable_get('latest_news_items', 3);
+      $this->assertNoRaw('<div class="views-row views-row-' . $items_to_display + 1 . ' views-row-odd views-row-first">', 'No more then ' . $items_to_display + 1 . ' items found in latest news');
+
+
+      // Newsitem published on news overview page
+      $this->drupalGet('news');
+      $this->assertResponse(200, "Webmaster can see news overview page");
+      $this->assertRaw($node->title, 'Title found on news overview page');
+      $this->assertRaw($node->body[LANGUAGE_NONE][0]['value'], 'Body found on news overview page');
+      $this->assertRaw($node->field_news_category[LANGUAGE_NONE][0]['tid'], 'Taxonomy general found on news overview page');
+      $file00 = file_load($node->field_news_tumbnail[LANGUAGE_NONE][0]['fid']);
+      $this->assertImageBySrc(image_style_url('news_tumbnail', $file00->uri));
+      $this->assertRaw($node->field_news_category[LANGUAGE_NONE][0]['tid'], 'Taxonomy general found on news overview page');
+      $this->assertRaw('Read more', 'Read more link found on news overview page');
+      $this->clickLink('Read more', 0);
+      // News category block found on overview page
+      $this->assertRaw('News Category', 'Category block found');
+      $this->assertRaw($node->field_news_category[LANGUAGE_NONE][0]['tid'], 'News category General found');
+
+      // editing the created news item
+      $this->drupalGet("node/$node->nid/edit");
+      $news = array(
+        'title' => 'Testnewsitem edit',
+        'body[und][0][value]' => 'This is the new edited body',
+      );
+
+      //deleting the created item
+      $this->drupalGet("node/$node->nid/delete");
+      $this->assertResponse(200, "Webmaster can delete item");
+
+      $this->verbose(var_export($news, TRUE));
+      $this->drupalPost("node/$node->nid/edit", $news, t('Save'));
+      $this->assertRaw('Testnewsitem edit', 'Title is correct');
+      $this->assertRaw('General', 'News category found');
+      $this->assertRaw('This is the new edited body', 'Body successfully changed');
+    }
+
+  }

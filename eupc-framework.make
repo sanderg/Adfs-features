@@ -5,6 +5,11 @@ api = 2
 projects[drupal][version] = "7.x"
 
 
+projects[mig5_net][type] = "profile"
+projects[mig5_net][download][type] = "git"
+projects[mig5_net][download][url] = "git@git.mig5.net:/drupal/profiles/mig5_net"
+projects[mig5_net][download][branch] = "build_2009101601"
+
 projects[adfs_profile][type] = "profile"
 projects[adfs_profile][download][type] = "file"
 projects[adfs_profile][download][url] = http://feature.eupc.adfsolutions.eu/sites/default/files/fserver/adfs_profile_0.tgz
